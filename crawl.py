@@ -13,10 +13,11 @@ than one API call per issue. Already-cached issues are skipped unless
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import fetch_issue as fi
 
@@ -46,20 +47,20 @@ def normalize_list_item(slug: str, raw: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def fetch_page(slug: str, per_page: int, page: int) -> List[Dict[str, Any]]:
-    """Fetch one page from the issues list endpoint (state=all, newest first)."""
+# Matches a `<url>; rel="next"` entry in a GitHub Link header.
+_NEXT_LINK = re.compile(r'<([^>]+)>;\s*rel="next"')
+
+
+def fetch_page(endpoint: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Fetch one page and return (items, next_url).
+
+    Uses `gh api -i` so we can read the Link header and follow cursor-based
+    pagination (the REST `page` param is capped at page 100 / ~10k items).
+    `endpoint` may be a repos/... path or a full next-page URL from Link.
+    """
     try:
         proc = subprocess.run(
-            [
-                "gh", "api",
-                "-X", "GET",
-                f"repos/{slug}/issues",
-                "-f", "state=all",
-                "-f", "sort=created",
-                "-f", "direction=desc",
-                "-f", f"per_page={per_page}",
-                "-f", f"page={page}",
-            ],
+            ["gh", "api", "-i", endpoint],
             capture_output=True,
             text=True,
             check=True,
@@ -67,19 +68,33 @@ def fetch_page(slug: str, per_page: int, page: int) -> List[Dict[str, Any]]:
     except FileNotFoundError:
         sys.exit("error: `gh` CLI not found; install it and run `gh auth login`")
     except subprocess.CalledProcessError as e:
-        sys.exit(f"error: gh api list failed for {slug} page {page}: {e.stderr.strip()}")
-    return json.loads(proc.stdout)
+        sys.exit(f"error: gh api list failed ({endpoint}): {e.stderr.strip()}")
+
+    # `-i` prepends HTTP status + headers, then a blank line, then the body.
+    header_text, _, body = proc.stdout.partition("\n\n")
+    items = json.loads(body)
+
+    next_url = None
+    for line in header_text.splitlines():
+        if line.lower().startswith("link:"):
+            m = _NEXT_LINK.search(line)
+            if m:
+                next_url = m.group(1)
+            break
+    return items, next_url
 
 
 def crawl(slug: str, count: int, db_path: str, refresh: bool) -> None:
     conn = fi.connect(db_path)
-    per_page = min(100, count)
     seen = 0
-    page = 1
     stored = skipped = 0
+    # Newest first; cursor pagination lets us go past the 10k page-param cap.
+    endpoint: Optional[str] = (
+        f"repos/{slug}/issues?state=all&sort=created&direction=desc&per_page=100"
+    )
 
-    while seen < count:
-        batch = fetch_page(slug, per_page, page)
+    while endpoint and seen < count:
+        batch, endpoint = fetch_page(endpoint)
         if not batch:
             break  # ran out of issues
 
@@ -97,8 +112,6 @@ def crawl(slug: str, count: int, db_path: str, refresh: bool) -> None:
             stored += 1
             kind = "PR " if issue["is_pull_request"] else "issue"
             print(f"  stored {kind} #{issue['number']}: {issue['title'][:70]}")
-
-        page += 1
 
     print(
         f"\nDone: {seen} scanned, {stored} stored, {skipped} skipped (cached) "
