@@ -13,10 +13,21 @@ close reason.
   ./fetch_issue.py --slug pytorch/pytorch --refresh 190041
   ```
 - `crawl.py` — bulk backfill via the issues list endpoint (cursor-based
-  pagination, 100/page). Skips already-cached rows.
+  pagination, 100/page). Skips already-cached rows. On first run, if there is
+  no local DB it seeds one from the published release snapshot (see
+  `restore_db.py`) so you don't crawl 189k rows from scratch; pass
+  `--no-bootstrap` to start empty.
   ```
-  ./crawl.py --count 1000          # newest 1000 items
+  ./crawl.py --count 1000          # seed from release (if needed), then top up newest 1000
   ./crawl.py --count 200000        # full history back to #1
+  ```
+- `export_parquet.py` / `restore_db.py` — publish and consume the DB as a
+  Parquet snapshot. `export_parquet.py` dumps `issues.db` to `issues.parquet`
+  (zstd); `restore_db.py` downloads that asset from the latest GitHub release
+  and rebuilds `issues.db`.
+  ```
+  ./export_parquet.py              # issues.db -> issues.parquet
+  ./restore_db.py                  # release snapshot -> issues.db
   ```
 - `dedupe_candidates.py` — mine the cached issues for likely duplicates. Builds
   a TF-IDF vector space over open issues (title weighted 3×, body 1×), uses an

@@ -20,6 +20,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import fetch_issue as fi
+import restore_db
 
 
 def normalize_list_item(slug: str, raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -84,7 +85,11 @@ def fetch_page(endpoint: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     return items, next_url
 
 
-def crawl(slug: str, count: int, db_path: str, refresh: bool) -> None:
+def crawl(slug: str, count: int, db_path: str, refresh: bool, bootstrap: bool = True) -> None:
+    # Seed the DB from the published release snapshot on first run so users
+    # don't have to crawl 189k rows from scratch (or know about restore_db.py).
+    if bootstrap:
+        restore_db.bootstrap_if_missing(db_path)
     conn = fi.connect(db_path)
     seen = 0
     stored = skipped = 0
@@ -131,9 +136,13 @@ def main() -> None:
     parser.add_argument(
         "--refresh", action="store_true", help="overwrite cached rows instead of skipping them"
     )
+    parser.add_argument(
+        "--no-bootstrap", action="store_true",
+        help="don't seed a missing DB from the release snapshot; start empty",
+    )
     args = parser.parse_args()
 
-    crawl(args.slug, args.count, args.db, args.refresh)
+    crawl(args.slug, args.count, args.db, args.refresh, bootstrap=not args.no_bootstrap)
 
 
 if __name__ == "__main__":
