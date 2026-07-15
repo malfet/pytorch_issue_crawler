@@ -10,5 +10,8 @@ venv/
 *.sqlite
 *.sqlite3
 
+# Exported dataset snapshots (published as release assets, not committed)
+*.parquet
+
 # OS / editor
 .DS_Store
