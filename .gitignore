@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local crawler database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
