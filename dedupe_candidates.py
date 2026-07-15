@@ -38,7 +38,9 @@ STOP = set(
 # generic in this repo -> little discriminative signal
 STOP |= set(
     "pytorch torch python cuda gpu cpu tensor model code test build fail fails failing "
-    "support feature request runtime version expected".split()
+    "support feature request runtime version expected "
+    # low-signal PR title words
+    "wip poc draft playground fix add update".split()
 )
 
 # Auto-generated tracking issues that are near-identical but not real duplicates
@@ -54,26 +56,33 @@ def tokenize(text: str) -> list[str]:
     return [t for t in TOKEN_RE.findall(text.lower()) if len(t) >= 3 and t not in STOP]
 
 
-def load_issues(con: sqlite3.Connection, slug: str, include_bot: bool):
+def load_issues(con: sqlite3.Connection, slug: str, include_bot: bool, is_pr: bool):
     rows = con.execute(
-        "SELECT number, title, COALESCE(body, ''), COALESCE(labels, '[]') "
-        "FROM issues WHERE slug = ? AND is_pull_request = 0 AND state = 'open'",
-        (slug,),
+        "SELECT number, title, COALESCE(body, ''), COALESCE(labels, '[]'), "
+        "COALESCE(user, '') "
+        "FROM issues WHERE slug = ? AND is_pull_request = ? AND state = 'open'",
+        (slug, 1 if is_pr else 0),
     ).fetchall()
     out = []
-    for number, title, body, labels in rows:
+    for number, title, body, labels, user in rows:
         if not include_bot and title and title.startswith(BOT_TITLE_PREFIXES):
             continue
-        out.append((number, title, body, labels))
+        # Meta's internal-sync bots mirror human PRs verbatim; skip so they
+        # don't show up as "competing" duplicates of the human original.
+        if not include_bot and (user.endswith("[bot]") or user == "pytorchbot"):
+            continue
+        out.append((number, title, body, labels, user))
     return out
 
 
 def build_vectors(issues, title_weight: float, df_cap: int, min_df: int):
-    """Return {number: {token: l2_normalized_tfidf_weight}} and {number: title}."""
+    """Return (vecs, titles, authors, n)."""
     titles = {}
+    authors = {}
     bags = {}
-    for number, title, body, _labels in issues:
+    for number, title, body, _labels, user in issues:
         titles[number] = title
+        authors[number] = user
         bag: dict[str, float] = defaultdict(float)
         for tok in tokenize(title):
             bag[tok] += title_weight
@@ -101,7 +110,7 @@ def build_vectors(issues, title_weight: float, df_cap: int, min_df: int):
             continue
         norm = math.sqrt(sum(w * w for w in v.values()))
         vecs[number] = {tok: w / norm for tok, w in v.items()}
-    return vecs, titles, n
+    return vecs, titles, authors, n
 
 
 def cosine_pairs(vecs, df_cap: int):
@@ -144,23 +153,35 @@ def main() -> None:
     ap.add_argument("--min-df", type=int, default=2)
     ap.add_argument("--include-bot", action="store_true",
                     help="include auto-generated DISABLED/UNSTABLE tracking issues")
+    ap.add_argument("--prs", action="store_true",
+                    help="dedupe open PRs instead of issues (competing implementations)")
+    ap.add_argument("--different-authors", action="store_true",
+                    help="only report pairs by different authors (default on with --prs)")
     args = ap.parse_args()
 
+    kind = "PRs" if args.prs else "issues"
+    diff_authors = args.different_authors or args.prs
+
     con = sqlite3.connect(args.db)
-    issues = load_issues(con, args.slug, args.include_bot)
-    vecs, titles, n = build_vectors(issues, args.title_weight, args.df_cap, args.min_df)
+    issues = load_issues(con, args.slug, args.include_bot, args.prs)
+    vecs, titles, authors, n = build_vectors(issues, args.title_weight, args.df_cap, args.min_df)
     sims = cosine_pairs(vecs, args.df_cap)
 
     pairs = sorted(
-        ((s, a, b) for (a, b), s in sims.items() if s >= args.threshold),
+        (
+            (s, a, b) for (a, b), s in sims.items()
+            if s >= args.threshold
+            and not (diff_authors and authors.get(a) == authors.get(b))
+        ),
         reverse=True,
     )
 
-    print(f"# {args.slug}: {n} open issues considered "
+    print(f"# {args.slug}: {n} open {kind} considered "
           f"({len(issues)} after bot filter), "
-          f"{len(pairs)} candidate pairs at cosine >= {args.threshold}\n")
+          f"{len(pairs)} candidate pairs at cosine >= {args.threshold}"
+          f"{' (different authors only)' if diff_authors else ''}\n")
     for s, a, b in pairs[: args.top]:
-        print(f"[{s:.2f}] #{a}  <->  #{b}")
+        print(f"[{s:.2f}] #{a} (@{authors.get(a)})  <->  #{b} (@{authors.get(b)})")
         print(f"        #{a}: {titles[a]}")
         print(f"        #{b}: {titles[b]}")
         print(f"        shared: {', '.join(shared_terms(vecs, a, b))}\n")

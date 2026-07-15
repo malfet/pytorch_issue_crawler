@@ -16,3 +16,22 @@ decision — never overwrite prior entries. Each entry records:
 This log is the audit trail for every dedup action, including ones a human
 asked for. Before closing an issue, check `deduplication.md` so you don't
 re-process a pair that was already decided.
+
+### Which one to close
+
+- **Issues:** close the newer issue as a duplicate of the older one.
+- **Pull requests** (duplicate effort — two *different* authors implementing the
+  same change; see `dedupe_candidates.py --prs`): pick which to keep by
+  *mergeability*, not age. Check each PR's `EasyCLA` status check and its
+  `updatedAt`:
+  - If the **older** PR lacks a signed CLA (its `EasyCLA` check is not
+    `SUCCESS`) **or** is stale (not updated recently / less recently than the
+    newer one), close the **older** PR in favor of the newer — the older one
+    can't merge or has been abandoned.
+  - Otherwise, follow the issue pattern: close the **newer** PR as a duplicate
+    of the older one.
+
+  Never close an external contributor's PR silently — leave a comment pointing
+  to the PR being kept so the authors can coordinate. Record the decision (which
+  PR closed, which kept, and the CLA/recency reason) in `deduplication.md` just
+  like issues.
