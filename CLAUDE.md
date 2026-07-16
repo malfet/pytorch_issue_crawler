@@ -25,9 +25,11 @@ re-process a pair that was already decided.
   *mergeability*, not age. Check each PR's `EasyCLA` status check and its
   `updatedAt`:
   - If the **older** PR lacks a signed CLA (its `EasyCLA` check is not
-    `SUCCESS`) **or** is stale (not updated recently / less recently than the
-    newer one), close the **older** PR in favor of the newer — the older one
-    can't merge or has been abandoned.
+    `SUCCESS`) **or** is stale, close the **older** PR in favor of the newer —
+    the older one can't merge or has been abandoned. Judge staleness by the
+    **last commit date** (latest commit's `committedDate`), *not* the PR's
+    `updatedAt`: cc-lists and bot comments bump `updatedAt` without any real
+    work, so a PR abandoned months ago can still look freshly "updated".
   - Otherwise, follow the issue pattern: close the **newer** PR as a duplicate
     of the older one.
 
