@@ -22,6 +22,21 @@ reflects the new (closed) state** — run `./fetch_issue.py --refresh <number>`,
 or just use `./close_duplicate.py --dup <newer> --keep <older>`, which closes
 with a comment and re-fetches in one step.
 
+### Proposing a close (show, don't make me open a browser)
+
+Before closing anything as a duplicate (or as expected behavior), **present a
+comparison table so the decision can be made without opening GitHub.** For each
+issue/PR in the pair include:
+
+- number + title,
+- the body — or, when the report centers on a repro (fuzzer crashes, overflow
+  reports, etc.), the **reproducer** and the resulting error/log message,
+  pulled out separately so the two are easy to eyeball side by side.
+
+Only close after the pair has been shown this way and confirmed. Prefer a
+markdown table (or a short per-issue block when bodies are long); the goal is
+that everything needed to judge the duplicate is on screen in the terminal.
+
 ### Which one to close
 
 - **Issues:** close the newer issue as a duplicate of the older one.
