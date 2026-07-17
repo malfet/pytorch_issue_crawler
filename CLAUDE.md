@@ -17,6 +17,11 @@ This log is the audit trail for every dedup action, including ones a human
 asked for. Before closing an issue, check `deduplication.md` so you don't
 re-process a pair that was already decided.
 
+**After closing any issue or PR, immediately re-fetch it so the local DB
+reflects the new (closed) state** — run `./fetch_issue.py --refresh <number>`,
+or just use `./close_duplicate.py --dup <newer> --keep <older>`, which closes
+with a comment and re-fetches in one step.
+
 ### Which one to close
 
 - **Issues:** close the newer issue as a duplicate of the older one.

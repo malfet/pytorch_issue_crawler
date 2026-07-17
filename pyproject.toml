@@ -10,10 +10,11 @@ dependencies = [
 
 [project.scripts]
 dedupe-candidates = "dedupe_candidates:main"
+close-duplicate = "close_duplicate:main"
 
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["crawl", "fetch_issue", "dedupe_candidates", "export_parquet", "restore_db"]
+py-modules = ["crawl", "fetch_issue", "dedupe_candidates", "close_duplicate", "export_parquet", "restore_db"]
