@@ -43,10 +43,12 @@ When a candidate is an **old** bug report with a concrete reproducer, don't just
 reason about it — **actually try to reproduce it on the current PyTorch** before
 deciding:
 
-1. Create a throwaway venv and install the current release
-   (`python3 -m venv /tmp/torch-venv && /tmp/torch-venv/bin/pip install torch`;
-   a CPU build is fine unless the repro specifically needs CUDA/MPS/ROCm).
-2. Run the issue's reproducer verbatim.
+1. Create a throwaway venv and install the **latest released** PyTorch — always
+   `pip install --upgrade torch` (never pin to the old version the issue was
+   filed against; the whole point is to check the current release). A CPU build
+   is fine unless the repro specifically needs CUDA/MPS/ROCm. Note the exact
+   version you got (`torch.__version__`).
+2. Run the issue's reproducer verbatim on that latest release.
 3. If it **no longer reproduces** *and* there are **no recent comments**
    indicating it's still relevant, close the issue as **fixed** (state_reason
    `completed`, i.e. `gh issue close --reason completed`) with a comment noting
