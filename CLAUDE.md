@@ -37,6 +37,26 @@ Only close after the pair has been shown this way and confirmed. Prefer a
 markdown table (or a short per-issue block when bodies are long); the goal is
 that everything needed to judge the duplicate is on screen in the terminal.
 
+### Old bug reports — try to reproduce before closing
+
+When a candidate is an **old** bug report with a concrete reproducer, don't just
+reason about it — **actually try to reproduce it on the current PyTorch** before
+deciding:
+
+1. Create a throwaway venv and install the current release
+   (`python3 -m venv /tmp/torch-venv && /tmp/torch-venv/bin/pip install torch`;
+   a CPU build is fine unless the repro specifically needs CUDA/MPS/ROCm).
+2. Run the issue's reproducer verbatim.
+3. If it **no longer reproduces** *and* there are **no recent comments**
+   indicating it's still relevant, close the issue as **fixed** (state_reason
+   `completed`, i.e. `gh issue close --reason completed`) with a comment noting
+   that you cannot reproduce the behavior on the latest PyTorch, and give the
+   exact version you tested.
+
+Caveats: only claim "can't reproduce" if you could genuinely run the repro — if
+it needs hardware you don't have, say so instead of closing. If it still
+reproduces, leave it open (and say so). Record the outcome in `deduplication.md`.
+
 ### Which one to close
 
 - **Issues:** close the newer issue as a duplicate of the older one.
