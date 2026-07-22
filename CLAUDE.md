@@ -24,11 +24,12 @@ with a comment and re-fetches in one step.
 
 ### What counts as a duplicate (don't over-merge)
 
-High text similarity is usually just a shared *report template*, not a
-duplicate. `dedupe_candidates.py` surfaces many pairs that describe **different
-functions** in the same words (e.g. a reporter's per-function catalog, or a
-`torch.special.xlog1py` vs `xlogy` "CPU vs GPU" family). Those are **not**
-duplicates — leave them open. Only dedup when the two reports share a genuine
+High text similarity is often just a shared *report template* across
+**different functions** (e.g. a reporter's per-function catalog, or a
+`torch.special.xlog1py` vs `xlogy` "CPU vs GPU" family). Those aren't clean 1:1
+duplicates, but they don't have to be left scattered either — group such a
+family under an **umbrella tracking issue** (see the `umbrella` skill). Reserve a
+straight `close_duplicate.py` dedup for when the two reports share a genuine
 root, i.e. one of:
 
 - the **same function**, or an **alias** of it (e.g. `fliplr`/`flipud`/`rot90`
