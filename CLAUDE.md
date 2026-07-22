@@ -22,6 +22,47 @@ reflects the new (closed) state** — run `./fetch_issue.py --refresh <number>`,
 or just use `./close_duplicate.py --dup <newer> --keep <older>`, which closes
 with a comment and re-fetches in one step.
 
+### What counts as a duplicate (don't over-merge)
+
+High text similarity is usually just a shared *report template*, not a
+duplicate. `dedupe_candidates.py` surfaces many pairs that describe **different
+functions** in the same words (e.g. a reporter's per-function catalog, or a
+`torch.special.xlog1py` vs `xlogy` "CPU vs GPU" family). Those are **not**
+duplicates — leave them open. Only dedup when the two reports share a genuine
+root, i.e. one of:
+
+- the **same function**, or an **alias** of it (e.g. `fliplr`/`flipud`/`rot90`
+  all call `flip`);
+- a **confirmed shared kernel / code path** — before merging distinct ops, open
+  the actual source in `~/git/pytorch/pytorch` and verify they hit the same
+  code (this session: `TensorTransformations.cpp`, `index_propagation.py`);
+- an **identical error string / traceback location**; or
+- the **same fixing PR** would resolve both.
+
+For "CPU vs GPU inconsistency" / precision / overflow reports, verify against a
+**float64 ground truth** before closing as expected behavior: confirm the diff
+is at the dtype's ULP level (the report's tolerance is usually tighter than the
+dtype allows), post the reference values in the comment, and note that which
+backend is closer to truth can vary — neither being "wrong" is the point.
+
+### Marking duplicates, labels, and stale local state
+
+- **Marking:** use `./close_duplicate.py` for issues — it closes via the GraphQL
+  `closeIssue(stateReason: DUPLICATE, duplicateIssueId: …)` mutation so the issue
+  gets the real "marked as duplicate of #X" relationship. `gh issue close
+  --reason` only exposes `completed`/`not_planned`, so never use it for a dup.
+  **PRs have no duplicate state_reason** — close them with a linking comment.
+- **Label hygiene:** when closing the newer issue, port any richer labels it
+  carries onto the kept issue so triage signal isn't lost (done repeatedly here:
+  `module: complex`, `module: correctness (silent)`, `module: inductor/sdpa`,
+  `module: viewing and reshaping`). Verify a label name actually exists before
+  adding — e.g. there is no `module: correctness`, only `module: correctness
+  (silent)` (`gh label list --search`).
+- **Stale state:** `crawl.py` only *inserts* new rows; it does **not** refresh
+  the open/closed state of already-cached issues. So a candidate may show as
+  `open` in the DB while it's since been closed on GitHub — always live-verify
+  each pair with `gh` before acting.
+
 ### Proposing a close (show, don't make me open a browser)
 
 Before closing anything as a duplicate (or as expected behavior), **present a
