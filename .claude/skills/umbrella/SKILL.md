@@ -1,6 +1,6 @@
 ---
 name: umbrella
-description: Group a cluster of highly-similar PyTorch issues under an umbrella tracking issue (🌂). Finds an existing umbrella issue or creates a new one, lists the members in it, and consolidates them. Use when dedupe_candidates.py surfaces a family of near-identical reports (per-function catalogs, per-model crashes, "CPU vs GPU" families) that are better tracked together than closed one-by-one or left scattered.
+description: Group a cluster of highly-similar PyTorch issues under an umbrella tracking issue (☂️). Prefers finding an existing umbrella issue over creating a new one, lists the members in it, and consolidates them. Use when dedupe_candidates.py surfaces a family of near-identical reports (per-function catalogs, per-model crashes, "CPU vs GPU" families) that are better tracked together than closed one-by-one or left scattered.
 ---
 
 # Umbrella: group highly-similar issues
@@ -8,7 +8,12 @@ description: Group a cluster of highly-similar PyTorch issues under an umbrella 
 Some clusters aren't a clean 1:1 duplicate but are clearly the *same pattern*
 across slightly different surfaces (e.g. one report per function, per model, or
 per op). Instead of leaving them scattered, gather them under a single
-**umbrella tracking issue** whose title carries a 🌂 emoji.
+**umbrella tracking issue** whose title carries an open-umbrella ☂️ emoji
+(U+2602 — the open umbrella, not the closed 🌂).
+
+**Strongly prefer an existing umbrella issue over creating a new one.** Only
+draft a new umbrella if no suitable one exists, and never `gh issue create`
+without explicit approval.
 
 This complements `close_duplicate.py` (which handles true 1:1 duplicates) and
 follows the same rules in `CLAUDE.md` (show a table before acting, record the
@@ -26,19 +31,22 @@ outcome in `deduplication.md`, live-verify state with `gh`).
    root — same code path / identical error — not just a shared report template
    (see `CLAUDE.md` "What counts as a duplicate").
 
-3. **Look for an existing umbrella** before creating one:
+3. **Look for an existing umbrella** (this is the default path):
    ```
-   gh issue list --repo pytorch/pytorch --state open --search "🌂 <keywords> in:title"
+   gh issue list --repo pytorch/pytorch --state open --search "☂️ <keywords> in:title"
    gh issue list --repo pytorch/pytorch --state open --search "umbrella <keywords> in:title"
+   gh issue list --repo pytorch/pytorch --state open --search "tracking <keywords> in:title"
    ```
-   If a fitting umbrella already exists, use it as the keep target.
+   If a fitting umbrella already exists, use it as the keep target. Present the
+   match to the user and stop here unless they ask to create a new one.
 
-4. **Otherwise draft a new umbrella and show it first** (title + body + labels)
-   per the show-before-acting rule. Title starts with 🌂; body states the shared
-   pattern and lists members as a task list:
+4. **Only if none fits, draft a new umbrella and show it first** (title + body +
+   labels) per the show-before-acting rule — do not create it without explicit
+   approval. Title starts with ☂️; body states the shared pattern and lists
+   members as a task list:
    ```
    gh issue create --repo pytorch/pytorch \
-     --title "🌂 <concise shared pattern>" \
+     --title "☂️ <concise shared pattern>" \
      --label "triaged" [--label "module: ..."] \
      --body "$(cat <<'EOF'
    Umbrella tracking issue for <pattern>.
