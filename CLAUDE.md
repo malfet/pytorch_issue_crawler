@@ -90,7 +90,17 @@ deciding:
    filed against; the whole point is to check the current release). A CPU build
    is fine unless the repro specifically needs CUDA/MPS/ROCm. Note the exact
    version you got (`torch.__version__`).
-2. Run the issue's reproducer verbatim on that latest release.
+
+   **Exception — validate against nightly instead** when the issue is **too
+   recent** for the latest release to include a fix, *and* a developer/the report
+   references a nightly (e.g. "fixed on nightly", "regression in the 2.13 RC/
+   nightly"). In that case install the nightly build:
+   ```
+   pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cpu
+   ```
+   (swap `cpu` for `cu124`/etc. if the repro needs a GPU). Always record which
+   channel you used — release vs nightly — and the exact version.
+2. Run the issue's reproducer verbatim on that build.
 3. If it **no longer reproduces** *and* there are **no recent comments**
    indicating it's still relevant, close the issue as **fixed** (state_reason
    `completed`, i.e. `gh issue close --reason completed`) with a comment noting
