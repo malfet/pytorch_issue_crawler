@@ -91,6 +91,12 @@ deciding:
    is fine unless the repro specifically needs CUDA/MPS/ROCm. Note the exact
    version you got (`torch.__version__`).
 
+   Build the venv with a **modern Homebrew Python**
+   (`/opt/homebrew/bin/python3.12` or `python3.13`), *not* the system
+   `/usr/bin/python3` — that's 3.9 (EOL) and caps `torch` at 2.8.0, whereas
+   3.12/3.13 install the real latest (e.g. 2.13.0). If a `pip` bootstrap in the
+   venv misbehaves, run `python -m ensurepip --upgrade` then use `python -m pip`.
+
    **Exception — validate against nightly instead** when the issue is **too
    recent** for the latest release to include a fix, *and* a developer/the report
    references a nightly (e.g. "fixed on nightly", "regression in the 2.13 RC/
