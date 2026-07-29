@@ -40,6 +40,26 @@ root, i.e. one of:
 - an **identical error string / traceback location**; or
 - the **same fixing PR** would resolve both.
 
+**Serial-reporter batches → collapse, don't merge 1:1.** When a *single author*
+files ≥3 same-template reports in a short window (differing only by API/function
+name or cosmetic framing), treat the batch as an **umbrella/collapse** case, not
+N separate pairwise dedups: pick one canonical and fold the rest into it. This
+is exactly how maintainers handled the prior-art batches — `Blooming-Tree`'s
+nine `torch.compile()` reports #172207–#172212 ("completely breaks model
+outputs" / "Systemic inconsistency", filed minutes apart) and
+`ChaitanyaRS06`'s `inf`-across-CPU/GPU family #154520/#154521/#154726/#154727/
+#154730/#154736 — closing the batch against one root (#172206, #154474) rather
+than diagnosing each.
+
+**Known-canonical routing.** Some complaints recur endlessly and already have a
+standing tracking issue — route new instances there instead of re-diagnosing.
+Verify the target is still open before reusing it. Current standing canonicals:
+
+- **numpy-indexing compat** (indexing a tensor with a numpy array, or mixing
+  boolean + integer indices, behaving unlike numpy) → **#119548** (maintainers
+  routed #22013/#65218/#100080/#60261 here).
+- **CPU-vs-GPU `inf`/`nan` edge-case inconsistency** → **#154474**.
+
 For "CPU vs GPU inconsistency" / precision / overflow reports, verify against a
 **float64 ground truth** before closing as expected behavior: confirm the diff
 is at the dtype's ULP level (the report's tolerance is usually tighter than the
@@ -119,7 +139,14 @@ reproduces, leave it open (and say so). Record the outcome in `deduplication.md`
 
 ### Which one to close
 
-- **Issues:** close the newer issue as a duplicate of the older one.
+- **Issues:** default to closing the newer issue as a duplicate of the older
+  one — **but the canonical is whichever issue holds the resolution, not just
+  the elder.** If a *newer* issue carries more of the signal (a linked/landed
+  fixing PR, richer labels, more diagnosis, or is already `completed`), keep
+  that one and close the older, less-detailed report against it. Prior art:
+  maintainers closed #154235 (older) as a duplicate of the newer #163630
+  because #163630 held the fix. Only fall back to pure age when the two are
+  otherwise equal.
 - **Pull requests** (duplicate effort — two *different* authors implementing the
   same change; see `dedupe_candidates.py --prs`): pick which to keep by
   *mergeability*, not age. Check each PR's `EasyCLA` status check and its
