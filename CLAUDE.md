@@ -135,7 +135,21 @@ deciding:
 
 Caveats: only claim "can't reproduce" if you could genuinely run the repro — if
 it needs hardware you don't have, say so instead of closing. If it still
-reproduces, leave it open (and say so). Record the outcome in `deduplication.md`.
+reproduces, leave it open (and say so).
+
+**Where to record the outcome depends on the decision:**
+
+- If you **closed** the issue (fixed / duplicate / won't-fix / expected
+  behavior), it goes in `deduplication.md` — that file is the audit trail of
+  *close* actions only.
+- If you **verified it and left it open** (still reproduces, improved-but-not-
+  fixed, hardware-specific, can't-repro-but-kept-open-due-to-recent-reports),
+  record it in **`still_valid.md`** instead. Keeping the "kept open" outcomes in
+  a separate file stops them from cluttering the close audit trail, and gives a
+  standing list of issues already confirmed live (so a later pass doesn't
+  re-verify them from scratch). Use the same table shape: date, issue + short
+  status, how you verified, and the reasoning / minimal repro. Before
+  re-verifying an old issue, check `still_valid.md` first.
 
 ### Which one to close
 
