@@ -78,7 +78,11 @@ backend is closer to truth can vary — neither being "wrong" is the point.
   `module: complex`, `module: correctness (silent)`, `module: inductor/sdpa`,
   `module: viewing and reshaping`). Verify a label name actually exists before
   adding — e.g. there is no `module: correctness`, only `module: correctness
-  (silent)` (`gh label list --search`).
+  (silent)` (`gh label list --search`). **Do not add `actionable` unless the
+  maintainer explicitly asks** — it asserts a confirmed, worth-doing fix, which
+  is a human triage call, not something to port or infer (and don't port it
+  across a dedup either). For fuzzer/OOB missing-validation reports prefer
+  `module: error checking`.
 - **Stale state:** `crawl.py` only *inserts* new rows; it does **not** refresh
   the open/closed state of already-cached issues. So a candidate may show as
   `open` in the DB while it's since been closed on GitHub — always live-verify
@@ -150,6 +154,32 @@ reproduces, leave it open (and say so).
   re-verify them from scratch). Use the same table shape: date, issue + short
   status, how you verified, and the reasoning / minimal repro. Before
   re-verifying an old issue, check `still_valid.md` first.
+
+**Sanitizer/OOB reports — "completes silently" is NOT proof of safety.** For
+memory-safety reports (compute-sanitizer / ASAN "Invalid `__global__` read/
+write", heap-buffer-overflow, OOB), a *bare* run only surfaces the bug when the
+bad access happens to hit an unmapped page and faults. So on a plain run without
+a sanitizer, only two verdicts are trustworthy:
+
+- a **hard crash** (SIGSEGV/SIGBUS, i.e. exit 139/138 or a negative returncode),
+  and
+- a **clean `TORCH_CHECK`/`RuntimeError`** (real validation exists).
+
+A run that "completes with no error" is **inconclusive**, not "safe / the backend
+is tolerant" — the OOB may still be there, just landing in mapped memory where
+nothing is watching. This is exactly why the original CUDA report needed
+compute-sanitizer to see it at all. Corollary for triage/severity: **if the only
+evidence of the bug is a compute-sanitizer trace** (no Python exception, no user-
+visible crash), it is probably not visible to a normal user either — treat it as
+lower urgency than a hard crash, and don't infer "CPU is fine" from a bare CPU
+run. To actually probe CPU memory safety you need an ASAN build or valgrind, not
+`python repro.py`.
+
+**This whole class = missing input validation.** Fuzzer OOB reports that pass an
+out-of-domain integer arg (index/dilation/padding/size near `INT32_MAX`/`INT64`
+limits) or a degenerate zero-size tensor (→ null `data_ptr`) into a kernel with
+no bounds/shape `TORCH_CHECK` are all one root cause. Tag them
+`module: error checking` (+ `topic: fuzzer`), not `actionable`.
 
 ### Which one to close
 
