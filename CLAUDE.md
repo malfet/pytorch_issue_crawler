@@ -59,6 +59,16 @@ Verify the target is still open before reusing it. Current standing canonicals:
   boolean + integer indices, behaving unlike numpy) → **#119548** (maintainers
   routed #22013/#65218/#100080/#60261 here).
 - **CPU-vs-GPU `inf`/`nan` edge-case inconsistency** → **#154474**.
+- **Missing shape/size checks → out-of-bounds tensor access** (ASAN
+  `heap-buffer-overflow`, compute-sanitizer `illegal memory access`, `SIGSEGV`
+  or `SIGFPE` from a degenerate/out-of-domain argument) → ☂️ **#195547**. Covers
+  CPU *and* CUDA/MPS, and divide-by-zero as well as OOB — see the
+  divide-by-zero note below. 119 issues folded in as of 2026-09-17; the
+  candidate sweep and per-group review live in
+  `malfet/pytorch_issue_crawler#1`. **Not** in scope: `TORCH_INTERNAL_ASSERT`
+  on invalid input (a check *does* fire, it is just the wrong kind — that wants
+  its own umbrella), and checks that exist but compute the wrong bound
+  (e.g. #136719's `div_rtn` int truncation), which stay open on their own merits.
 
 For "CPU vs GPU inconsistency" / precision / overflow reports, verify against a
 **float64 ground truth** before closing as expected behavior: confirm the diff
@@ -180,6 +190,32 @@ out-of-domain integer arg (index/dilation/padding/size near `INT32_MAX`/`INT64`
 limits) or a degenerate zero-size tensor (→ null `data_ptr`) into a kernel with
 no bounds/shape `TORCH_CHECK` are all one root cause. Tag them
 `module: error checking` (+ `topic: fuzzer`), not `actionable`.
+
+**Divide-by-zero / FPE belongs to the same class — do not split it off.** A
+`SIGFPE`, "Floating point exception (core dumped)", or integer
+divide-by-zero in a kernel is usually the *same* missing boundary check as an
+out-of-bounds read, just with a different symptom: an unvalidated **empty or
+zero-size tensor** (or a zero `groups`/`num_bins`/`kernel_size`-style argument)
+reaches arithmetic that assumes the value is positive. Whether the bad value
+lands on a divide or on a pointer offset is an accident of the kernel, not a
+difference in root cause — so **don't reason from the symptom** to a separate
+bug class. Prior art: #141219 (`_scaled_dot_product_flash_attention_for_cpu`
+FPE) was folded into the missing-shape-checks umbrella **#195547** on exactly
+this ground, after it had first been wrongly excluded as "an unchecked zero
+divisor, not a size contract."
+
+The fix is correspondingly cheap, which is worth saying in triage: these are
+normally resolved by a **`TORCH_CHECK` on the degenerate input**, or by an
+**early return** of the correct empty/identity result when an empty tensor is a
+legitimate input (many ops should simply return empty rather than divide). That
+makes them good first-contributor material — but the same caveat as the rest of
+the class applies: prefer a **device-agnostic check ahead of dispatch** over one
+patch per kernel, and don't add `actionable` without the maintainer asking.
+
+Exclusions that *do* hold: a Python-level `ZeroDivisionError` raised in
+frontend/scheduler code (e.g. an LR scheduler accepting `factor=0`) is ordinary
+argument validation in Python, not a kernel boundary check; likewise
+hardware/driver-specific FPE reports. Keep those out of the umbrella.
 
 ### Which one to close
 
