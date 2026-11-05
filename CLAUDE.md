@@ -59,6 +59,12 @@ Verify the target is still open before reusing it. Current standing canonicals:
   boolean + integer indices, behaving unlike numpy) → **#119548** (maintainers
   routed #22013/#65218/#100080/#60261 here).
 - **CPU-vs-GPU `inf`/`nan` edge-case inconsistency** → **#154474**.
+- **Extreme values** (finite input near the dtype's range limits makes an
+  intermediate overflow/underflow → `inf`/`0`/`NaN` where the exact result is
+  representable; forward or derivative) → ☂️ **#203520**. Verify against an exact
+  (float64/mpmath) reference first. **Not** in scope: gradients losing a tiny term
+  to *cancellation* near saturation (crawler group #5), compile-vs-eager divergence,
+  CPU-vs-GPU inf/nan (#154474).
 - **Missing shape/size checks → out-of-bounds tensor access** (ASAN
   `heap-buffer-overflow`, compute-sanitizer `illegal memory access`, `SIGSEGV`
   or `SIGFPE` from a degenerate/out-of-domain argument) → ☂️ **#195547**. Covers
