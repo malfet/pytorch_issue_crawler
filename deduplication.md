@@ -198,3 +198,9 @@ Tested on torch 2.16.0.dev20261115 (nightly), macOS 27.2.1, Apple M4 Pro, and bi
 - **#91368** (masked-update loop leak), closed completed. Driver memory flat on every version 2.1.0+ on macOS 27, so OS-side; comment notes older macOS may still leak.
 
 **Left to the maintainer, not closed:** #154329 (leak catch-all; original repro flat on macOS 27) and #120237 (MPS FFT ~1.3 ulp vs CPU ~0.3 ulp).
+
+## 2026-11-15 — MPS follow-ups (closed on GitHub, maintainer-approved)
+
+- **#101251 → #138200** (DUPLICATE, closed; target was already closed as completed). `MPSNDArray sliceDimension` assertion from `torch.inverse` on MPS for n > 1024 (the report's batch size gives a 1360×1360 matrix). The reporter's `DAL` repro crashes on 2.0.1–2.7.1 and works on 2.8.0 through nightly 20261115; `torch.inverse` alone crashes on 2.7.1 at n ≥ 1025. Fixed by **#146754** (2.8.0), which fixes #138200. Added `module: crash` and `module: linear algebra` to #101251 at the maintainer's request; #138200 already has both.
+- **#99160 → #92311** (DUPLICATE, closed; target was already closed as completed). ChatRWKV token INT64_MIN on Intel Mac + AMD eGPU: the AMD-only `argmax`/`multinomial` INT64_MIN bug, fixed by **#104374** (2.1). The ChatRWKV sampling path gives valid tokens on Apple silicon with 2.0.1, 2.9.1 and nightly; x86 macOS wheels were dropped after 2.2. Did not port `module: rnn` (it was mislabeled).
+- **#104315** (MPS `randperm` not exactly uniform), closed completed. **#182528** (2.13) adds Fisher-Yates for n ≤ 4096 and per-island Fisher-Yates for ties on larger n, mirroring CUDA. χ² sanity checks pass on 2.9.1 and nightly.
