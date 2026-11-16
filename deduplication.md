@@ -183,3 +183,18 @@ Maintainer approved closing these after reviewing what's still missing. Each was
 - **#140704** (`vmap` + `mse_loss`). Fails on 2.2.2–2.13, passes on nightly. Fixed by **#201351** (MSE forward moved to Metal, which removed the MPS-only `is_same_size` check).
 - **#149261** (SDPA `Invalid buffer size: 39.27 GiB`). Fails on 2.2.2–2.11, passes on 2.13. Most likely fixed by **#181575** (Metal prefill attention kernels; in 2.13, not 2.12).
 **Kept open by maintainer decision:** #127676 (`torch.mps.device` really doesn't exist), #153957 (Linear backward. It gives bit-identical results on every torch 2.2.2 through nightly on macOS 27 (rel err 4.0e-6), so the fix is OS-side; `Linear.mm` still uses MPSGraph matmul, and Linear bugs are known to persist on older macOS ≤ 26.1 and older hardware), and #142515 (conv guard still too broad on macOS < 15.1). #149184 not decided.
+
+## 2026-11-15 — MPS sweep part 3 (closed on GitHub, maintainer-approved)
+
+Tested on torch 2.16.0.dev20261115 (nightly), macOS 27.2.1, Apple M4 Pro, and bisected across released versions 2.1.0–2.13 in throwaway venvs.
+
+- **#118517 → #78929** (DUPLICATE, closed). The same gap: `Tensor.type()` on MPS returns `'torch.mps.FloatTensor'`, which `type()` can't parse back (`ValueError: invalid type`). Both still reproduce; #78929 is older and carries `module: error checking`. No labels to port.
+- **#105860** and **#160553** (OOB advanced indexing silent on MPS), closed completed. Silent on 2.1–2.9.1, raise `AcceleratorError ... out of bounds` from 2.10. Fixed by **#166615** (kernel assert reporting; its description uses #160553's example).
+- **#142048** (`solve_triangular` with A on MPS and B on CPU → SIGSEGV), closed completed. Segfaults on every release through 2.13; nightly dev20261006+ raises `Passed CPU tensor to MPS op`. Most likely **#196241** (blocked solve, dropped MPSMatrixSolveTriangular).
+- **#155293** (2^31-element bf16 `rand` → MPSGraph `reshape` assertion), closed completed. Aborts on 2.7.1–2.11, works on 2.13. Fixed by **#182386** (RNG moved to Metal).
+- **#117949** (misleading `slow_conv3d_forward` not implemented), closed completed. MPS conv3d works since 2.3; the CPU-input/MPS-weight case now raises a device-mismatch error since **#200035**.
+- **#121632** (TransformerDecoder bool mask wrong on MPS), closed completed. Off by ~0.05 on 2.1.0/2.2.2, matches CPU from 2.3.1. No single PR identified.
+- **#125254** (`torch.compile`: "Device mps not supported"), closed completed. Works on 2.7.1+ via the MPS Inductor backend; a commenter confirmed it on 2.10.
+- **#91368** (masked-update loop leak), closed completed. Driver memory flat on every version 2.1.0+ on macOS 27, so OS-side; comment notes older macOS may still leak.
+
+**Left to the maintainer, not closed:** #154329 (leak catch-all; original repro flat on macOS 27) and #120237 (MPS FFT ~1.3 ulp vs CPU ~0.3 ulp).
