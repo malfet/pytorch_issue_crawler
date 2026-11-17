@@ -209,3 +209,7 @@ Tested on torch 2.16.0.dev20261115 (nightly), macOS 27.2.1, Apple M4 Pro, and bi
 
 - **#153976** (MPS CTC loss implementation gist), closed completed. Native MPS `ctc_loss` forward and backward landed in **#187716** and **#188187** (2.14.0); the ≥512-label backward fix **#203360** is nightly-only. Nightly 20261115 matches CPU (loss identical, gradient difference < 1e-6, including 600-label targets). The issue had `actionable`; it is now obsolete.
 - **#122030** (single-layer MNIST training diverges on MPS), closed completed as can't-repro. The attached notebook is a complete script. I re-created it with synthetic 0–255 digit-like data, identical init on CPU and MPS: loss curves and final weights match (3.7e-9) on 2.2.2, 2.3.1 and nightly 20261115 on macOS 27.2.1. Even the reporter's era is correct here, so likely an OS-side fix (MPSGraph matmul in `nn.Linear`); the comment notes older macOS may still be affected. Last comment (2025-11) was a "progress?" ping with no details.
+
+## 2026-11-17
+
+- **#130430** (`aten::_linalg_solve_ex.result` not implemented for MPS, from ComfyUI KolorsSampler), closed completed at the maintainer's request. MPS dispatch `_linalg_solve_ex_out_mps` added by **#146531** (2.7.0). On nightly 20261115 with warnings as errors, batched solve matches CPU (1.8e-6) and `solve_ex` info is 0.
